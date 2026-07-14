@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gantt Sincronizado | Facilit</title>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Brand */
+  --blue:#1a56a0;--blue-dark:#153f7c;--blue-light:#e8f0fb;--blue-border:#c5d8f5;
+  /* Texto */
+  --text:#2c3e50;--text-muted:#6b7a8d;--text-light:#9aabb8;
+  /* Bordas e fundos */
+  --border:#dde3ea;--border-focus:#1a56a0;--bg:#f5f7fa;--white:#ffffff;
+  /* Feedback */
+  --success:#1e8c4e;--success-bg:#e6f6ed;--error:#c0392b;--error-bg:#fdecea;--warning:#b45309;--warning-bg:#fef3c7;
+  /* Layout */
+  --radius:4px;--radius-md:6px;--shadow:0 2px 12px rgba(0,0,0,.12);--shadow-sm:0 1px 4px rgba(0,0,0,.08);
+  --sidebar-bg:#1a2844;--sidebar-width:230px;--header-height:50px;
+  /* Específico Gantt */
+  --green-bar:#2da44e;--red-bar:#8b0000;
+}
+body{font-family:'Nunito Sans',sans-serif;color:var(--text);background:var(--bg);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:hidden}
+
+/* ── TARGET HEADER (Medivh Padrão) ────────────────────────── */
+.target-header{background:#f3f3f3;height:var(--header-height);display:flex;align-items:center;justify-content:space-between;padding:0 15px;border-bottom:1px solid #e0e0e0;position:fixed;top:0;left:0;right:0;z-index:200}
+.header-left,.header-right{display:flex;align-items:center;gap:18px}
+.logo{height:30px}
+.year-badge{background:#003366;color:#fff;padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px}
+.header-icons{display:flex;align-items:center;gap:18px}
+.header-icons i,.header-right i{cursor:pointer;font-size:18px;color:#555;transition:color .15s}
+.header-icons i:hover,.header-right i:hover{color:#1a56a0}
+.notification-wrapper{position:relative;display:flex;align-items:center}
+.notification-wrapper .dot{position:absolute;top:-2px;right:-2px;width:6px;height:6px;background:#e53935;border-radius:50%;border:1px solid #f3f3f3}
+.ia-icon-wrapper{background:#fff;padding:6px;border-radius:10px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.1);border:1px solid #ddd;display:flex;align-items:center}
+.ia-icon-wrapper i{font-size:16px;color:#555}
+.user-avatar img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+
+/* ── OFFSET PARA HEADER FIXO ──────────────────────────────── */
+.page-offset{margin-top:var(--header-height);display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+
+/* ── CONTEXT BAR ───────────────────────────────────────────── */
+.ctx-bar{background:#fff;border-bottom:1px solid var(--border);padding:6px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ctx-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctx-color-dot{width:10px;height:10px;border-radius:50%;background:#e53935;flex-shrink:0}
+.ctx-label{font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px}
+.ctx-name{font-size:13px;font-weight:600;color:var(--text)}
+.ctx-icon-btn{background:none;border:none;color:var(--text-light);font-size:14px;padding:2px 4px;border-radius:4px;cursor:pointer}
+.ctx-icon-btn:hover{background:#f0f0f0}
+.ctx-gear{display:flex;align-items:center;gap:3px;font-size:12px;color:var(--text-light);cursor:pointer;padding:3px 6px;border-radius:4px}
+.ctx-gear:hover{background:#f0f0f0}
+.ctx-right{display:flex;align-items:center;gap:8px}
+.ctx-action-btn{background:#fff;border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text-light);padding:4px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;white-space:nowrap}
+.ctx-action-btn:hover{background:#f5f6f7}
+.ctx-action-btn i{font-size:13px}
+
+/* ── USER BAR ──────────────────────────────────────────────── */
+.user-bar{background:#fff;border-bottom:1px solid var(--border);padding:4px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.user-chip{display:flex;align-items:center;gap:6px}
+.user-avatar-sm{width:22px;height:22px;border-radius:50%;background:#b0b7c3;display:flex;align-items:center;justify-content:center}
+.user-avatar-sm i{font-size:11px;color:#fff}
+.user-name{font-size:12px;color:var(--text)}
+.status-badge{background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:.3px}
+.loa-badge{background:#e8eaed;color:#444;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px}
+
+/* ── TAB BAR ───────────────────────────────────────────────── */
+.tab-bar{background:#fff;border-bottom:2px solid var(--border);padding:0 16px;display:flex;align-items:flex-end;gap:0;overflow-x:auto;flex-shrink:0}
+.tab-bar::-webkit-scrollbar{height:3px}
+.tab-bar::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+.tab{padding:10px 16px;font-size:13px;color:var(--text-light);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;white-space:nowrap;transition:color .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+
+/* ── PAGE BODY ─────────────────────────────────────────────── */
+.page-body{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:0}
+
+/* ── PORTLET ───────────────────────────────────────────────── */
+.portlet{background:#fff;border-radius:8px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.portlet-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.portlet-title{font-size:14px;font-weight:700;color:var(--text)}
+.portlet-hdr-actions{display:flex;align-items:center;gap:2px}
+.portlet-btn{background:none;border:none;color:var(--text-light);font-size:16px;padding:4px 5px;border-radius:4px;cursor:pointer;display:flex;align-items:center}
+.portlet-btn:hover{background:#f0f2f5;color:var(--text)}
+
+/* ── GANTT TOOLBAR ─────────────────────────────────────────── */
+.gantt-toolbar{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;flex-shrink:0}
+.gantt-toolbar-left{display:flex;align-items:center;gap:6px}
+.gantt-toolbar-right{display:flex;align-items:center;gap:4px}
+.tb-btn{background:#fff;border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text);padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;white-space:nowrap}
+.tb-btn:hover{background:#f5f6f7}
+.tb-btn i{font-size:14px;color:var(--text-light)}
+.tb-icon-btn{background:#fff;border:1px solid var(--border);border-radius:4px;color:var(--text-light);font-size:15px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.tb-icon-btn:hover{background:#f5f6f7;color:var(--text)}
+.tb-icon-btn.active{background:var(--blue-dark);border-color:var(--blue-dark);color:#fff}
+.tb-icon-btn.active:hover{background:#0d3566}
+.tb-scale-btn{background:#fff;border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text);padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;white-space:nowrap}
+.tb-scale-btn:hover{background:#f5f6f7}
+/* edit sub-toolbar */
+.gantt-subtoolbar{padding:6px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0;background:#fafbfc}
+.tb-save-btn{background:var(--blue-dark);border:none;border-radius:4px;font-size:12px;font-weight:700;color:#fff;padding:6px 14px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit}
+.tb-save-btn:hover{background:#0d3566}
+
+/* ── CUSTOM CONFIRM DIALOG ────────────────────────────────── */
+#confirm-overlay{position:fixed;inset:0;z-index:10001;display:none;align-items:flex-start;justify-content:center;padding-top:8px}
+#confirm-overlay.show{display:flex}
+#confirm-dialog{background:#fff;border:1px solid #c8c8c8;border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,.28);width:420px;max-width:92vw;font-family:'Nunito Sans',sans-serif;animation:confirmIn .15s ease}
+@keyframes confirmIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.confirm-header{background:#f1f3f4;padding:9px 16px;border-bottom:1px solid #e0e0e0;border-radius:6px 6px 0 0}
+.confirm-header-title{font-size:12px;color:#555;font-weight:600}
+.confirm-body{padding:20px 20px 10px}
+.confirm-msg{font-size:14px;color:#202020;margin-bottom:8px;line-height:1.5}
+.confirm-submsg{font-size:13px;color:#4b5563;line-height:1.45}
+.confirm-footer{padding:12px 16px 16px;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.confirm-btn-ok{background:#1a56a0;color:#fff;border:1.5px solid #1a56a0;border-radius:4px;padding:7px 22px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.confirm-btn-ok:hover{background:#153f7c;border-color:#153f7c}
+.confirm-btn-cancel{background:#fff;color:#374151;border:1.5px solid #c8c8c8;border-radius:4px;padding:7px 22px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.confirm-btn-cancel:hover{background:#f5f5f5}
+
+/* ── TOAST ALERT ───────────────────────────────────────────── */
+#sync-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.18);padding:14px 20px;display:flex;align-items:flex-start;gap:12px;min-width:320px;max-width:480px;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease}
+#sync-toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.toast-icon{width:20px;height:20px;border-radius:50%;background:#1e8c4e;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.toast-icon i{font-size:12px;color:#fff}
+.toast-body{flex:1}
+.toast-title{font-size:13px;font-weight:700;color:#172b4d;margin-bottom:2px}
+.toast-msg{font-size:12px;color:#6b7a8d;line-height:1.4}
+.toast-close{background:none;border:none;font-size:16px;color:#9aabb8;cursor:pointer;padding:0;line-height:1;align-self:flex-start}
+.toast-close:hover{color:#555}
+.tb-action-btn{background:#fff;border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text);padding:5px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;white-space:nowrap}
+.tb-action-btn:hover{background:#f5f6f7}
+.tb-sync-label{font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+.tb-toggle{position:relative;width:34px;height:18px;cursor:pointer}
+.tb-toggle input{opacity:0;width:0;height:0}
+.tb-toggle-track{position:absolute;inset:0;background:#d1d5db;border-radius:9px;transition:background .2s}
+.tb-toggle input:checked+.tb-toggle-track{background:var(--blue)}
+.tb-toggle-thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tb-toggle input:checked~.tb-toggle-thumb{left:18px}
+
+/* ── GANTT WRAPPER ─────────────────────────────────────────── */
+.gantt-wrapper{display:flex;overflow:hidden;flex:1;min-height:0}
+.gantt-left{flex-shrink:0;width:700px;overflow:hidden;border-right:2px solid var(--border)}
+.gantt-right{flex:1;overflow-x:auto;overflow-y:hidden;position:relative}
+.gantt-right::-webkit-scrollbar{height:6px}
+.gantt-right::-webkit-scrollbar-track{background:#e8eaed}
+.gantt-right::-webkit-scrollbar-thumb{background:#bbb;border-radius:3px}
+
+/* ── GANTT TABLE ───────────────────────────────────────────── */
+.gantt-table{width:100%;border-collapse:collapse;font-size:12px}
+.gantt-table th{background:#f8f9fb;font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.3px;padding:7px 10px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;position:sticky;top:0;z-index:10}
+.gantt-table td{padding:6px 10px;border-bottom:1px solid #f0f2f5;white-space:nowrap;vertical-align:middle;font-size:12.5px;color:var(--text)}
+.gantt-table tr:hover td{background:#f8f9fb}
+.gantt-table tr.muted td{color:var(--text-muted)}
+.gantt-table tr.muted:hover td{background:#fafafa}
+.col-mode{width:76px}
+.col-id{width:40px;text-align:center}
+.col-wbs{width:52px}
+.col-name{min-width:160px;max-width:170px}
+.col-dur{width:75px}
+.col-date{width:90px}
+.task-name{overflow:hidden;text-overflow:ellipsis;display:block;max-width:170px}
+.wbs-indent{padding-left:20px}
+.expand-icon{font-size:11px;color:var(--text-muted);margin-right:4px;cursor:pointer}
+.task-mode-auto{font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:10px;font-weight:600}
+.task-mode-manual{font-size:10px;background:#f3f4f6;color:#6b7280;padding:2px 7px;border-radius:10px;font-weight:600}
+
+/* ── GANTT CHART ───────────────────────────────────────────── */
+.gantt-chart-table{border-collapse:collapse;font-size:11px;min-width:1400px}
+.month-header th{background:#f0f2f5;font-size:11px;font-weight:700;color:var(--text);padding:5px 10px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:center;white-space:nowrap}
+.week-header th{background:#f8f9fb;font-size:10px;font-weight:600;color:var(--text-light);padding:4px 6px;border-bottom:1px solid var(--border);border-right:1px solid #e8eaed;text-align:center;white-space:nowrap;min-width:110px}
+.chart-row td{padding:0;border-bottom:1px solid #f0f2f5;height:31px;border-right:1px solid #f3f4f6;vertical-align:middle}
+.chart-row:hover td{background:#f8f9fb}
+.bar-cell{padding:0 2px}
+.gantt-bar{height:18px;border-radius:3px;display:block}
+.gantt-bar.green{background:var(--green-bar)}
+.gantt-bar.dark-red{background:var(--red-bar)}
+.gantt-bar.full{width:calc(100% - 4px);margin:0 2px}
+.empty-cell{height:31px}
+
+/* ── NOTAS TECNICAS ────────────────────────────────────────── */
+.notas-portlet{background:#fff;border-radius:8px;box-shadow:var(--shadow);flex-shrink:0}
+.notas-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.notas-title{font-size:13px;font-weight:600;color:var(--text)}
+.notas-header-actions{display:flex;align-items:center;gap:2px}
+
+/* ── SCROLLBAR GLOBAL ──────────────────────────────────────── */
+.gantt-scroll-footer{padding:4px 0;border-top:1px solid var(--border);background:#fafafa;display:flex;align-items:center;justify-content:flex-start;padding-left:14px}
+.gantt-scroll-footer-bar{width:120px;height:8px;background:#d1d5db;border-radius:4px;cursor:pointer}
+
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER PADRÃO TARGET (Medivh) ══════════════════════ -->
+<header class="target-header">
+  <div class="header-left">
+    <img src="https://imgfacilit.plataformatarget.com.br/image/601/2da44ac393826c1e117c42221c11c0a332cc53b7"
+         alt="Facilit Logo" class="logo">
+    <div class="year-badge">2026</div>
+    <div class="header-icons">
+      <i class="ri-user-line"></i>
+      <i class="ri-search-line"></i>
+    </div>
+  </div>
+  <div class="header-right">
+    <i class="ri-add-circle-line"></i>
+    <i class="ri-focus-3-line"></i>
+    <i class="ri-git-merge-line" style="transform:rotate(90deg)"></i>
+    <i class="ri-file-settings-line"></i>
+    <i class="ri-line-chart-line"></i>
+    <i class="ri-apps-2-line"></i>
+    <div class="notification-wrapper">
+      <i class="ri-notification-3-line"></i>
+      <span class="dot"></span>
+    </div>
+    <i class="ri-question-line"></i>
+    <div class="ia-icon-wrapper"><i class="ri-magic-line"></i></div>
+    <div class="user-avatar">
+      <img src="https://facilit.com.br/wp-content/uploads/2026/03/user_male_portrait-1.png" alt="User">
+    </div>
+  </div>
+</header>
+<div class="page-offset">
+
+<!-- ═══ CONTEXT BAR ══════════════════════════════════════════ -->
+<div class="ctx-bar">
+  <div class="ctx-left">
+    <div class="ctx-color-dot"></div>
+    <span class="ctx-label">Objetivo</span>
+    <span class="ctx-name">Teste quadro de visões</span>
+    <button class="ctx-icon-btn"><i class="ri-pencil-line"></i></button>
+    <div class="ctx-gear">
+      <i class="ri-settings-3-line"></i>
+      <i class="ri-arrow-down-s-line"></i>
+    </div>
+  </div>
+  <div class="ctx-right">
+    <button class="ctx-action-btn"><i class="ri-download-2-line"></i> Exportar Entidades</button>
+    <button class="ctx-action-btn"><i class="ri-refresh-line"></i> Atualizado em 13/05/2026</button>
+    <button class="ctx-action-btn"><i class="ri-book-open-line"></i> Manual Online</button>
+  </div>
+</div>
+
+<!-- ═══ USER BAR ═════════════════════════════════════════════ -->
+<div class="user-bar">
+  <div class="user-chip">
+    <div class="user-avatar-sm"><i class="ri-user-fill"></i></div>
+    <span class="user-name">Carlos Mendonça</span>
+  </div>
+  <span class="status-badge">A iniciar</span>
+  <span class="loa-badge">LOA 5441</span>
+  <span class="loa-badge">LOA 5745</span>
+</div>
+
+<!-- ═══ TABS ══════════════════════════════════════════════════ -->
+<nav class="tab-bar">
+  <div class="tab">Cronograma</div>
+  <div class="tab">Indicadores</div>
+  <div class="tab active">(cloned)</div>
+  <div class="tab">Arquivos &amp; Imagens</div>
+  <div class="tab">Quadro de Visões</div>
+  <div class="tab">Gráficos</div>
+  <div class="tab">customizada</div>
+  <div class="tab">Teste Suporte</div>
+  <div class="tab">painel TGB-4429</div>
+  <div class="tab">Teste TGB-4429</div>
+  <div class="tab">Biblioteca de documentos</div>
+</nav>
+
+<!-- ═══ PAGE BODY ═════════════════════════════════════════════ -->
+<div class="page-body" style="flex-direction:row;align-items:stretch">
+
+  <!-- GANTT PORTLET -->
+  <div class="portlet" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+
+    <!-- Portlet Header -->
+    <div class="portlet-header">
+      <span class="portlet-title">Gantt Sincronizado</span>
+      <div class="portlet-hdr-actions">
+        <button class="portlet-btn"><i class="ri-external-link-line"></i></button>
+        <button class="portlet-btn"><i class="ri-more-2-fill"></i></button>
+      </div>
+    </div>
+
+    <!-- Gantt Toolbar -->
+    <div class="gantt-toolbar">
+      <div class="gantt-toolbar-left" id="gantt-edit-options">
+        <button class="tb-btn"><i class="ri-arrow-up-s-line"></i> Recolher Todos</button>
+        <button class="tb-btn">Colunas Visíveis <i class="ri-arrow-down-s-line"></i></button>
+        <button class="tb-btn">Opções De Exibição <i class="ri-arrow-down-s-line"></i></button>
+      </div>
+      <div class="gantt-toolbar-right">
+        <button class="tb-icon-btn active" id="btn-edit" onclick="toggleEditMode()" title="Editar"><i class="ri-pencil-line" id="edit-icon"></i></button>
+        <button class="tb-icon-btn" id="btn-sync" onclick="abrirModalSync()"><i class="ri-loop-right-line"></i></button>
+        <button class="tb-icon-btn"><i class="ri-zoom-in-line"></i></button>
+        <button class="tb-icon-btn"><i class="ri-zoom-out-line"></i></button>
+        <button class="tb-scale-btn"><i class="ri-layout-column-line"></i> Ajustar Escala</button>
+      </div>
+    </div>
+
+    <!-- Sub-toolbar de edição (visível só no modo edição) -->
+    <div class="gantt-subtoolbar" id="gantt-subtoolbar" style="display:none">
+      <span class="tb-sync-label">
+        Sincronizar
+        <label class="tb-toggle">
+          <input type="checkbox" id="sync-toggle">
+          <div class="tb-toggle-track"></div>
+          <div class="tb-toggle-thumb"></div>
+        </label>
+      </span>
+      <button class="tb-icon-btn" title="Desfazer"><i class="ri-arrow-go-back-line"></i></button>
+      <button class="tb-icon-btn" title="Refazer"><i class="ri-arrow-go-forward-line"></i></button>
+      <button class="tb-action-btn"><i class="ri-download-2-line"></i> Importar</button>
+      <button class="tb-action-btn"><i class="ri-share-box-line"></i> Exportar</button>
+      <button class="tb-save-btn"><i class="ri-save-line"></i> SALVAR</button>
+    </div>
+
+    <!-- Gantt Body -->
+    <div class="gantt-wrapper" style="flex:1;overflow:hidden">
+
+      <!-- LEFT: Task table -->
+      <div class="gantt-left" style="overflow-y:auto">
+        <table class="gantt-table">
+          <thead>
+            <tr>
+              <th class="col-mode">Modo de tarefa</th>
+              <th class="col-id">Id</th>
+              <th class="col-wbs">WBS</th>
+              <th class="col-name">Nome</th>
+              <th class="col-dur">Duração</th>
+              <th class="col-date">Início Previsto</th>
+              <th class="col-date">Término Previsto</th>
+              <th class="col-date">Início Realizado</th>
+              <th class="col-date">Término Realizado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row 1 -->
+            <tr>
+              <td><span class="task-mode-auto">Auto</span></td>
+              <td style="text-align:center">1</td>
+              <td>1</td>
+              <td>
+                <span class="expand-icon"><i class="ri-arrow-down-s-line"></i></span>
+                <span class="task-name" title="Teste quadro de visões">Teste quadro de vi...</span>
+              </td>
+              <td>712 dias</td>
+              <td>13/05/2024</td>
+              <td>02/02/2027</td>
+              <td>15/05/2024</td>
+              <td>-</td>
+            </tr>
+            <!-- Row 2 -->
+            <tr>
+              <td><span class="task-mode-auto">Auto</span></td>
+              <td style="text-align:center">2</td>
+              <td>1.1</td>
+              <td>
+                <span class="expand-icon" style="padding-left:12px"><i class="ri-arrow-right-s-line"></i></span>
+                <span class="task-name" title="Template API N...">Template API N...</span>
+              </td>
+              <td>281 dias</td>
+              <td>13/05/2024</td>
+              <td>23/06/2025</td>
+              <td>15/05/2024</td>
+              <td>-</td>
+            </tr>
+            <!-- Row 3 -->
+            <tr>
+              <td><span class="task-mode-auto">Auto</span></td>
+              <td style="text-align:center">3</td>
+              <td>1.2</td>
+              <td>
+                <span class="task-name" style="padding-left:24px" title="Projeto teste 01">Projeto teste 01</span>
+              </td>
+              <td>712 dias</td>
+              <td>13/05/2024</td>
+              <td>02/02/2027</td>
+              <td>15/05/2024</td>
+              <td>-</td>
+            </tr>
+            <!-- Row 4 -->
+            <tr>
+              <td><span class="task-mode-manual">Manual</span></td>
+              <td style="text-align:center">4</td>
+              <td>1.3</td>
+              <td><span class="task-name" style="padding-left:24px" title="tESTE 02">tESTE 02</span></td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+            <!-- Row 5 (muted placeholder) -->
+            <tr class="muted">
+              <td><span class="task-mode-manual" style="opacity:.45">Manual</span></td>
+              <td style="text-align:center;color:var(--text-muted)">5</td>
+              <td style="color:var(--text-muted)">1.4</td>
+              <td><span class="task-name" style="padding-left:24px;color:var(--text-muted)">Criar uma nova ta...</span></td>
+              <td style="color:var(--text-muted)">-</td>
+              <td style="color:var(--text-muted)">-</td>
+              <td style="color:var(--text-muted)">-</td>
+              <td style="color:var(--text-muted)">-</td>
+              <td style="color:var(--text-muted)">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RIGHT: Gantt chart -->
+      <div class="gantt-right">
+        <table class="gantt-chart-table" style="height:100%">
+          <thead>
+            <!-- Month row -->
+            <tr class="month-header">
+              <th colspan="2">Maio/2024</th>
+              <th colspan="4">Junho/2024</th>
+              <th colspan="3">Julho/2024</th>
+              <th colspan="4">Agosto/2024</th>
+              <th colspan="2">Setembro/2024</th>
+            </tr>
+            <!-- Week row -->
+            <tr class="week-header">
+              <th>Semana #19</th>
+              <th>Semana #20</th>
+              <th>Semana #21</th>
+              <th>Semana #22</th>
+              <th>Semana #23</th>
+              <th>Semana #24</th>
+              <th>Semana #25</th>
+              <th>Semana #26</th>
+              <th>Semana #27</th>
+              <th>Semana #28</th>
+              <th>Semana #29</th>
+              <th>Semana #30</th>
+              <th>Semana #31</th>
+              <th>Semana #32</th>
+              <th>Semana #33</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row 1 — green bar full width -->
+            <tr class="chart-row">
+              <td colspan="15" class="bar-cell">
+                <div class="gantt-bar green full"></div>
+              </td>
+            </tr>
+            <!-- Row 2 — green bar ~4 weeks -->
+            <tr class="chart-row">
+              <td colspan="15" class="bar-cell">
+                <div class="gantt-bar green" style="width:38%;height:18px;border-radius:3px;display:block"></div>
+              </td>
+            </tr>
+            <!-- Row 3 — dark red bar full width -->
+            <tr class="chart-row">
+              <td colspan="15" class="bar-cell">
+                <div class="gantt-bar dark-red full"></div>
+              </td>
+            </tr>
+            <!-- Row 4 — no bar -->
+            <tr class="chart-row">
+              <td colspan="15" class="empty-cell"></td>
+            </tr>
+            <!-- Row 5 — no bar -->
+            <tr class="chart-row">
+              <td colspan="15" class="empty-cell"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Scroll footer indicator -->
+    <div class="gantt-scroll-footer">
+      <div class="gantt-scroll-footer-bar"></div>
+    </div>
+
+  </div>
+
+
+</div>
+</div><!-- /.page-offset -->
+
+<!-- ═══ MODAL SINCRONIZAR ════════════════════════════════ -->
+<div id="modal-sync-overlay" style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:10px;width:480px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.22);font-family:'Inter',sans-serif;overflow:hidden">
+
+    <!-- Modal Header -->
+    <div style="padding:20px 22px 14px;display:flex;align-items:flex-start;gap:14px;border-bottom:1px solid #e8eaed">
+      <div style="width:40px;height:40px;border-radius:50%;background:#e8f0fb;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="ri-refresh-line" style="font-size:20px;color:#1a6bbf"></i>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:#172b4d;margin-bottom:2px">Sincronizar Dados do Projeto</div>
+        <div style="font-size:12px;color:#6b7280">Confirme suas preferências de sincronização</div>
+      </div>
+
+    </div>
+
+    <!-- Modal Body -->
+    <div style="padding:22px 24px 18px">
+      <p style="font-size:13.5px;color:#172b4d;margin-bottom:18px;line-height:1.55">
+        Existem diferenças entre os dados do Target e do Gantt. Como você deseja proceder?
+      </p>
+
+      <!-- Radio Opção 1 — Usar Target -->
+      <label id="label-target" onclick="selecionarOpcao('target')" style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;padding:12px 14px;border-radius:8px;border:2px solid #1a6bbf;background:#f0f6ff;cursor:pointer;transition:all .15s">
+        <div style="margin-top:1px;flex-shrink:0">
+          <input type="radio" name="sync-choice" id="radio-target" value="target" checked
+            style="accent-color:#1a6bbf;width:16px;height:16px;cursor:pointer">
+        </div>
+        <p style="font-size:13px;color:#172b4d;line-height:1.5;margin:0">
+          Usar <strong>DADOS DO TARGET</strong> — considera o que está no banco de dados central.
+        </p>
+      </label>
+
+      <!-- Radio Opção 2 — Manter Gantt -->
+      <label id="label-gantt" onclick="selecionarOpcao('gantt')" style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;padding:12px 14px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;cursor:pointer;transition:all .15s">
+        <div style="margin-top:1px;flex-shrink:0">
+          <input type="radio" name="sync-choice" id="radio-gantt" value="gantt"
+            style="accent-color:#1a6bbf;width:16px;height:16px;cursor:pointer">
+        </div>
+        <p style="font-size:13px;color:#172b4d;line-height:1.5;margin:0">
+          Manter <strong>DADOS DO GANTT</strong> — preserva as alterações feitas localmente no cronograma.
+        </p>
+      </label>
+
+      <!-- Observação -->
+      <p style="font-size:12px;color:#1a6bbf;font-style:italic;margin-bottom:4px">
+        Obs: Novas entidades serão criadas normalmente em ambos os casos.
+      </p>
+    </div>
+
+    <!-- Modal Footer -->
+    <div style="padding:14px 24px 18px;border-top:1px solid #e8eaed;display:flex;align-items:center;justify-content:flex-end;gap:10px">
+      <button onclick="fecharModalSync()" style="background:#fff;border:1.5px solid #d1d5db;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:600;color:#374151;cursor:pointer;font-family:'Inter',sans-serif">Cancelar</button>
+      <button onclick="confirmarSync()" style="background:#1a6bbf;border:1.5px solid #1a6bbf;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:'Inter',sans-serif">Confirmar</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Custom Confirm Dialog -->
+<div id="confirm-overlay">
+  <div id="confirm-dialog">
+    <div class="confirm-header">
+      <span class="confirm-header-title">facilit.plataformatarget.com.br diz</span>
+    </div>
+    <div class="confirm-body">
+      <div class="confirm-msg">Você deseja sair desta página?</div>
+      <div class="confirm-submsg">As informações inseridas ainda não foram salvas.<br>Salve os dados antes de sair para não perder as alterações realizadas.</div>
+    </div>
+    <div class="confirm-footer">
+      <button class="confirm-btn-cancel" onclick="fecharConfirmSync()">Sair da página</button>
+      <button class="confirm-btn-ok" onclick="executarSync()">Permanecer na página</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Alert de Confirmação de Sincronização -->
+<div id="sync-toast">
+  <div class="toast-icon"><i class="ri-check-line"></i></div>
+  <div class="toast-body">
+    <div class="toast-title">Sincronização confirmada</div>
+    <div class="toast-msg" id="toast-msg-text"></div>
+  </div>
+  <button class="toast-close" id="toast-close-btn"><i class="ri-close-line"></i></button>
+</div>
+
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+    });
+  });
+
+  // Toggle notas técnicas
+  function toggleNotas(header) {
+    var body = header.nextElementSibling;
+    body.style.display = body.style.display === 'none' ? 'block' : 'none';
+  }
+
+  // Toggle modo edição (lápis)
+  function toggleEditMode() {
+    var subtoolbar  = document.getElementById('gantt-subtoolbar');
+    var btn         = document.getElementById('btn-edit');
+    var icon        = document.getElementById('edit-icon');
+    var isOpen      = subtoolbar.style.display !== 'none';
+    if (isOpen) {
+      icon.className = 'ri-pencil-line';
+      subtoolbar.style.display = 'none';
+    } else {
+      icon.className = 'ri-close-line';
+      subtoolbar.style.display = 'flex';
+    }
+  }
+
+  // Modal sincronizar
+  function abrirModalSync() {
+    var overlay = document.getElementById('modal-sync-overlay');
+    overlay.style.display = 'flex';
+    selecionarOpcao('target'); // reset para padrão
+  }
+  function fecharModalSync() {
+    document.getElementById('modal-sync-overlay').style.display = 'none';
+  }
+  function selecionarOpcao(opcao) {
+    var lTarget = document.getElementById('label-target');
+    var lGantt  = document.getElementById('label-gantt');
+    var rTarget = document.getElementById('radio-target');
+    var rGantt  = document.getElementById('radio-gantt');
+    if (opcao === 'target') {
+      rTarget.checked = true;
+      lTarget.style.border = '2px solid #1a6bbf';
+      lTarget.style.background = '#f0f6ff';
+      lGantt.style.border = '2px solid #e5e7eb';
+      lGantt.style.background = '#fff';
+    } else {
+      rGantt.checked = true;
+      lGantt.style.border = '2px solid #1a6bbf';
+      lGantt.style.background = '#f0f6ff';
+      lTarget.style.border = '2px solid #e5e7eb';
+      lTarget.style.background = '#fff';
+    }
+  }
+  var _syncEscolhaPendente = null;
+
+  function confirmarSync() {
+    _syncEscolhaPendente = document.querySelector('input[name="sync-choice"]:checked').value;
+    fecharModalSync();
+    document.getElementById('confirm-overlay').classList.add('show');
+  }
+
+  function fecharConfirmSync() {
+    document.getElementById('confirm-overlay').classList.remove('show');
+    _syncEscolhaPendente = null;
+  }
+
+  function executarSync() {
+    document.getElementById('confirm-overlay').classList.remove('show');
+    fecharModalSync();
+    var label = _syncEscolhaPendente === 'target' ? 'dados do Target' : 'dados do Gantt';
+    document.getElementById('toast-msg-text').textContent = 'Sincronização confirmada com ' + label + '. As alterações foram aplicadas.';
+    var toast = document.getElementById('sync-toast');
+    toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 4000);
+    _syncEscolhaPendente = null;
+  }
+  document.getElementById('toast-close-btn').addEventListener('click', function() {
+    document.getElementById('sync-toast').classList.remove('show');
+  });
+  document.getElementById('modal-sync-overlay').addEventListener('click', function(e) {
+    if (e.target === this) fecharModalSync();
+  });
+
+  // Sync vertical scroll between left and right gantt panels
+  var leftPanel = document.querySelector('.gantt-left');
+  var rightPanel = document.querySelector('.gantt-right');
+  leftPanel.addEventListener('scroll', function() {
+    rightPanel.scrollTop = leftPanel.scrollTop;
+  });
+  rightPanel.addEventListener('scroll', function() {
+    leftPanel.scrollTop = rightPanel.scrollTop;
+  });
+</script>
+</body>
+</html>
